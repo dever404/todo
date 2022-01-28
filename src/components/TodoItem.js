@@ -16,4 +16,4 @@ function Additem(props) {
     )
   }
   
-  export default App;
+  export default Additem;
