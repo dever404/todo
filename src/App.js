@@ -1,36 +1,41 @@
-import React from 'react';
+import React , { Component } from 'react';
 
-class App extends React.Component {
+class App extends Component {
 
   constructor(props) {
     super(props);
-    this.state = {todotitle: '',datenow : new Date(),tododate:''};
+    this.state = {todotitle: '',datenow : new Date(),tododate:'',todoId: ''};
     this.handleChange = this.handleChange.bind(this);
     this.handleSubmit = this.handleSubmit.bind(this);
     this.items = JSON.parse(window.localStorage.getItem('MyTodo'));
+    this.items = ( this.items == null ? [] : this.items);
+    this.groupItems = GroupItem(this.items);
   }
 
   handleChange(event) { 
-    const val = event.target.type === 'checkbox' ? event.target.checked : event.target.value;
+    const val = event.target.type === 'checkbox' ? event.target.checked : event.target.value,
+          id = event.target.id;
     if (event.target.type === 'checkbox' ) {
       event.target.parentNode.classList.toggle('line-through');
-    }
-        
+      const editItem = this.items.find(e => e.id == id);
+      editItem.check = val;
+      window.localStorage.setItem('MyTodo', JSON.stringify(this.items));
+    } 
     this.setState({
       [event.target.name]: val,
     });  
-  }
 
+  }
   handleSubmit = (event) => {
     event.preventDefault();
+    this.state.todoId = this.items.length;
     if ( this.state.todotitle !== '') {
-        this.items.push({ title: this.state.todotitle , date: this.state.tododate, checkChange : this.handleChange });
-        this.items.sort((a, b) => (a.date > b.date) ? 1 : -1)
+        this.items.push({id:this.state.todoId, title: this.state.todotitle , date: this.state.tododate, check : false });
+        this.items.sort((a, b) => (a.date > b.date) ? 1 : -1);
     }
-    this.state.todotitle = this.state.tododate = '';
-
+    this.groupItems = GroupItem(this.items);
     window.localStorage.setItem('MyTodo', JSON.stringify(this.items));
-
+    this.state.todotitle = this.state.tododate = '';
   }
 
   componentDidMount() {
@@ -46,7 +51,7 @@ class App extends React.Component {
 
   tick() {
     this.setState({
-      date: new Date()
+      datenow: new Date()
     });
   }
 
@@ -85,18 +90,19 @@ class App extends React.Component {
                 value="+ Add to liste" 
                 className="hover:bg-blue-400 group flex items-center rounded-md bg-blue-500 text-white text-sm font-medium pl-2 pr-3 py-1 shadow-sm cursor-pointer mb-3"
               />
-              <label className='text-xs text-gray-400 mr-1'>Todo Itemes : <span id='items'> { this.items.length } </span></label>
+              <label className='text-xs text-gray-400 mr-1'>Todo Itemes : <span id='items'> {Object.keys(this.items ).length} / {Object.keys(this.groupItems ).length} </span></label>
             </div>
           </form>
-          <div className='bg-slate-50 px-10 pb-8'>
-            <div className="w-full h-px bg-gray-200 my-6"></div>
-            <h6 className='text-center font-semibold text-gray-400  mb-2'>Todo Liste: </h6>
-            <ul id='todo-liste'> 
-              { this.items.map((item,index) => 
-                <Additem todoid={index} todoitem={item.title} tododate={item.date} todochange={item.checkChange} />  
-              )}
-            </ul>
-          </div>
+          <h6 className='text-center font-semibold text-gray-400  mb-2'>Todo Liste: </h6>
+          <ul id='todo-liste' className='bg-slate-50 p-4 sm:px-8 sm:pt-6 sm:pb-8 lg:p-4 xl:px-8 xl:pt-6 xl:pb-8 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-4 text-sm leading-6'> 
+            {Object.keys(this.groupItems).map((keyName, i) => (
+                <li key={i} className='hover:bg-blue-500 hover:ring-blue-500 hover:shadow-md group rounded-md p-3 bg-white ring-1 ring-slate-200 shadow-sm'>
+                  <div className='group-hover:text-white font-semibold text-slate-900 mb-2'>{keyName}</div>
+                  { this.groupItems[keyName].map((item,gIndex) =>
+                  <Additem todoid={item.id} todoitem={item.title} todocheck={item.check} todochange={this.handleChange} />)}
+                </li>
+            ))}
+          </ul>
         </div>
       </div>
     );
@@ -106,26 +112,40 @@ class App extends React.Component {
 // Function to add a new todo item
 
 function Additem(props) {
+  const inputProps = {
+    type: 'checkbox',
+    name: 'todocheck',
+    id: props.todoid,
+    onChange: props.todochange,
+    className: 'mr-1',
+  };
+  
+  if( props.todocheck) 
+    inputProps.checked = 'checked'
+
   return(
-    <li>
+    <div className={ props.todocheck ? 'line-through' : null}>
       <input 
-        type='checkbox' 
-        name='todocheck' 
-        id= {props.todoid}
-        value={props.todoitem} 
-        onChange={props.todochange} 
-        className='mr-1'
+        {...inputProps}
       /> 
       <label 
         htmlFor= {props.todoid}
       > 
         {props.todoitem} 
-        <span className='text-xs text-gray-400 ml-1' >
-          ({ props.tododate })
-        </span>
       </label>
-    </li>
+    </div>
   )
+}
+
+// Function to group items with
+
+function GroupItem(items){
+  const groupItems = items.reduce((catsSoFar, { date, title , check , id }) => {
+    if (!catsSoFar[date]) catsSoFar[date] = [];
+    catsSoFar[date].push({title : title , check : check , id : id});
+    return catsSoFar;
+  }, {});
+  return groupItems;
 }
 
 export default App;
